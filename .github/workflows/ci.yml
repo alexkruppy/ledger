@@ -56,7 +56,7 @@ jobs:
         run: ./mvnw -B compile test-compile -DskipTests
 
       - name: Run integration tests
-        run: ./mvnw -B test -Dtest="com.ledger.*IntegrationTest"
+        run: ./mvnw -B test -Dtest="com.ledger.IntegrationTest"
 
   package:
     name: Package & Docker

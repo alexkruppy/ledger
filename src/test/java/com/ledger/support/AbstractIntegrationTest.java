@@ -26,9 +26,11 @@ import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.TestPropertySource;
 import org.testcontainers.containers.GenericContainer;
+import org.testcontainers.containers.KafkaContainer;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
+import org.testcontainers.utility.DockerImageName;
 
 import java.math.BigDecimal;
 import java.time.Duration;
@@ -45,7 +47,6 @@ import static com.github.tomakehurst.wiremock.client.WireMock.*;
         "ledger.security.refresh-token-store=inmemory",
         "logging.level.com.ledger.messaging=WARN",
         "logging.level.org.apache.kafka=WARN",
-        "spring.kafka.bootstrap-servers=localhost:19092",
 })
 public abstract class AbstractIntegrationTest {
 
@@ -54,6 +55,12 @@ public abstract class AbstractIntegrationTest {
 
     @Container
     static final GenericContainer<?> REDIS = new GenericContainer<>("redis:7-alpine").withExposedPorts(6379);
+
+    @Container
+    static final KafkaContainer KAFKA = new KafkaContainer(
+            DockerImageName.parse("apache/kafka:3.7.2")
+                    .asCompatibleSubstituteFor("confluentinc/cp-kafka"))
+            .withStartupTimeout(Duration.ofSeconds(180));
 
     protected static WireMockServer gateway;
 
@@ -116,6 +123,10 @@ public abstract class AbstractIntegrationTest {
                         .withBody("{\"error\":\"Bank account declined the payout\"}")));
     }
 
+    protected static String kafkaBootstrap() {
+        return KAFKA.getBootstrapServers();
+    }
+
     @DynamicPropertySource
     static void registerProperties(DynamicPropertyRegistry registry) {
         registry.add("spring.datasource.url", POSTGRES::getJdbcUrl);
@@ -125,6 +136,7 @@ public abstract class AbstractIntegrationTest {
         registry.add("spring.jpa.hibernate.ddl-auto", () -> "validate");
         registry.add("spring.data.redis.host", REDIS::getHost);
         registry.add("spring.data.redis.port", () -> REDIS.getMappedPort(6379));
+        registry.add("spring.kafka.bootstrap-servers", KAFKA::getBootstrapServers);
         registry.add("ledger.gateway.base-url", gateway::baseUrl);
     }
 
