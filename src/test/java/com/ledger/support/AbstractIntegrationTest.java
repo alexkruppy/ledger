@@ -128,12 +128,14 @@ public abstract class AbstractIntegrationTest {
 
     @AfterEach
     void cleanDatabase() {
-        ledgerEntryRepository.deleteAll();
-        transferRepository.deleteAll();
-        paymentRepository.deleteAll();
-        outboxRepository.deleteAll();
-        walletRepository.deleteTestWallets();
-        userRepository.deleteTestUsers();
+        tx.executeWithoutResult(s -> {
+            ledgerEntryRepository.deleteAll();
+            transferRepository.deleteAll();
+            paymentRepository.deleteAll();
+            outboxRepository.deleteAll();
+            walletRepository.deleteTestWallets();
+            userRepository.deleteTestUsers();
+        });
     }
 
     protected User createUser(String email) {

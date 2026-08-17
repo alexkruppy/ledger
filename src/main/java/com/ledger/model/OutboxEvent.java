@@ -1,6 +1,8 @@
 package com.ledger.model;
 
 import jakarta.persistence.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.Instant;
 
@@ -24,6 +26,7 @@ public class OutboxEvent {
     private String eventType;
 
     @Column(nullable = false, columnDefinition = "jsonb")
+    @JdbcTypeCode(SqlTypes.JSON)
     private String payload;
 
     @Enumerated(EnumType.STRING)
