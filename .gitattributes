@@ -1,0 +1,11 @@
+# Ensure LF line endings for shell scripts (critical for CI on Ubuntu)
+mvnw text eol=lf
+
+# Binary files
+*.jar binary
+*.class binary
+*.png binary
+*.jpg binary
+*.gif binary
+*.ico binary
+*.svg text

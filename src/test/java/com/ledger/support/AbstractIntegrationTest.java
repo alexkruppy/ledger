@@ -131,9 +131,9 @@ public abstract class AbstractIntegrationTest {
         ledgerEntryRepository.deleteAll();
         transferRepository.deleteAll();
         paymentRepository.deleteAll();
-        walletRepository.deleteAll();
         outboxRepository.deleteAll();
-        userRepository.deleteAll();
+        walletRepository.deleteTestWallets();
+        userRepository.deleteTestUsers();
     }
 
     protected User createUser(String email) {

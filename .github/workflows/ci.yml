@@ -18,6 +18,7 @@ jobs:
   unit-tests:
     name: Unit Tests
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -33,11 +34,12 @@ jobs:
         run: ./mvnw -B compile test-compile -DskipTests
 
       - name: Run unit tests
-        run: ./mvnw -B test -Dtest="com.ledger.service.*Test" -DfailIfNoTests=false
+        run: ./mvnw -B test -Dtest="com.ledger.service.*Test"
 
   integration-tests:
     name: Integration Tests (Testcontainers)
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     needs: unit-tests
     steps:
       - name: Checkout
@@ -54,11 +56,12 @@ jobs:
         run: ./mvnw -B compile test-compile -DskipTests
 
       - name: Run integration tests
-        run: ./mvnw -B test -Dtest="com.ledger.*IntegrationTest,com.ledger.support.AbstractIntegrationTest" -DfailIfNoTests=false
+        run: ./mvnw -B test -Dtest="com.ledger.*IntegrationTest"
 
   package:
     name: Package & Docker
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     needs: [unit-tests, integration-tests]
     if: github.event_name == 'push' && github.ref == 'refs/heads/master'
     steps:
