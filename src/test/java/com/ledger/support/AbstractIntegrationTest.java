@@ -13,10 +13,13 @@ import com.ledger.repository.WalletRepository;
 import com.ledger.repository.UserRepository;
 import com.ledger.service.FxService;
 import com.ledger.service.LedgerService;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import org.junit.jupiter.api.AfterEach;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.test.context.DynamicPropertyRegistry;
@@ -78,6 +81,12 @@ public abstract class AbstractIntegrationTest {
     @Autowired
     protected FxService fxService;
 
+    @PersistenceContext
+    protected EntityManager em;
+
+    @Autowired(required = false)
+    protected ThreadPoolTaskScheduler taskScheduler;
+
     static {
         gateway = new WireMockServer(WireMockConfiguration.options().dynamicPort());
         gateway.start();
@@ -121,13 +130,17 @@ public abstract class AbstractIntegrationTest {
 
     @AfterEach
     void cleanDatabase() {
+        if (taskScheduler != null) {
+            taskScheduler.getScheduledExecutor().shutdownNow();
+        }
+        try { Thread.sleep(200); } catch (InterruptedException ignored) { Thread.currentThread().interrupt(); }
         tx.executeWithoutResult(s -> {
-            ledgerEntryRepository.deleteAll();
-            transferRepository.deleteAll();
-            paymentRepository.deleteAll();
-            outboxRepository.deleteAll();
-            walletRepository.deleteAll();
-            userRepository.deleteAll();
+            em.createNativeQuery("DELETE FROM ledger_entries").executeUpdate();
+            em.createNativeQuery("DELETE FROM transfers").executeUpdate();
+            em.createNativeQuery("DELETE FROM payment_transactions").executeUpdate();
+            em.createNativeQuery("DELETE FROM outbox_events").executeUpdate();
+            em.createNativeQuery("DELETE FROM wallets").executeUpdate();
+            em.createNativeQuery("DELETE FROM users WHERE email <> 'fees@ledger.internal'").executeUpdate();
         });
         seedSystemData();
     }
