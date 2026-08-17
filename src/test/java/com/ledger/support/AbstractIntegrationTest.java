@@ -13,9 +13,7 @@ import com.ledger.repository.PaymentTransactionRepository;
 import com.ledger.repository.TransferRepository;
 import com.ledger.repository.WalletRepository;
 import com.ledger.repository.UserRepository;
-import com.ledger.model.LedgerEntry;
 import com.ledger.model.User;
-import com.ledger.model.Wallet;
 import com.ledger.service.LedgerService;
 import org.junit.jupiter.api.AfterEach;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -27,11 +25,9 @@ import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.TestPropertySource;
 import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.containers.KafkaContainer;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.utility.DockerImageName;
 
 import java.math.BigDecimal;
 import java.time.Duration;
@@ -41,8 +37,11 @@ import java.util.function.BooleanSupplier;
 import static com.github.tomakehurst.wiremock.client.WireMock.*;
 
 /**
- * Base class for integration tests: real PostgreSQL, Redis and Kafka via
+ * Base class for integration tests: real PostgreSQL and Redis via
  * Testcontainers, plus a WireMock stub acting as the external acquiring gateway.
+ * Kafka auto-config stays enabled but points at an unreachable broker so the
+ * Spring context boots cleanly; subclasses that need a real broker
+ * (e.g. {@link AbstractKafkaIntegrationTest}) override the bootstrap servers.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @Testcontainers
@@ -51,6 +50,8 @@ import static com.github.tomakehurst.wiremock.client.WireMock.*;
         "ledger.gateway.settle-async=false",
         "ledger.security.refresh-token-store=inmemory",
         "logging.level.com.ledger.messaging=WARN",
+        "logging.level.org.apache.kafka=WARN",
+        "spring.kafka.bootstrap-servers=localhost:19092",
 })
 public abstract class AbstractIntegrationTest {
 
@@ -58,14 +59,7 @@ public abstract class AbstractIntegrationTest {
     static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:16-alpine");
 
     @Container
-    static final KafkaContainer KAFKA = new KafkaContainer(DockerImageName.parse("confluentinc/cp-kafka:7.6.1"));
-
-    @Container
     static final GenericContainer<?> REDIS = new GenericContainer<>("redis:7-alpine").withExposedPorts(6379);
-
-    protected static String kafkaBootstrap() {
-        return KAFKA.getBootstrapServers();
-    }
 
     protected static WireMockServer gateway;
 
@@ -129,7 +123,6 @@ public abstract class AbstractIntegrationTest {
         registry.add("spring.jpa.hibernate.ddl-auto", () -> "validate");
         registry.add("spring.data.redis.host", REDIS::getHost);
         registry.add("spring.data.redis.port", () -> REDIS.getMappedPort(6379));
-        registry.add("spring.kafka.bootstrap-servers", KAFKA::getBootstrapServers);
         registry.add("ledger.gateway.base-url", gateway::baseUrl);
     }
 

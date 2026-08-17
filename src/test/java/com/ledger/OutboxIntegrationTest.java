@@ -4,7 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ledger.dto.AuthResponse;
 import com.ledger.model.OutboxEvent;
 import com.ledger.model.Wallet;
-import com.ledger.support.AbstractIntegrationTest;
+import com.ledger.support.AbstractKafkaIntegrationTest;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
@@ -26,7 +26,7 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-class OutboxIntegrationTest extends AbstractIntegrationTest {
+class OutboxIntegrationTest extends AbstractKafkaIntegrationTest {
 
     private final TestRestTemplate rest = new TestRestTemplate();
     private final ObjectMapper objectMapper = new ObjectMapper();
