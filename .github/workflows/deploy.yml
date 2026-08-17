@@ -1,0 +1,58 @@
+name: Deploy
+
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+    branches: [master]
+
+permissions:
+  contents: read
+  packages: read
+
+env:
+  IMAGE_NAME: ghcr.io/${{ github.repository }}
+
+jobs:
+  deploy:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout (for deploy scripts)
+        uses: actions/checkout@v4
+
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          script: |
+            set -euo pipefail
+
+            DEPLOY_PATH="${{ secrets.DEPLOY_PATH }}"
+            cd "$DEPLOY_PATH"
+
+            echo ">>> Pulling new images..."
+            docker compose -f docker-compose.prod.yml pull
+
+            echo ">>> Rolling restart..."
+            docker compose -f docker-compose.prod.yml up -d --remove-orphans
+
+            echo ">>> Waiting for health check..."
+            sleep 15
+
+            echo ">>> Checking app health..."
+            if curl -sf http://localhost:8080/actuator/health > /dev/null 2>&1; then
+              echo ">>> App is healthy"
+            else
+              echo ">>> WARNING: App health check failed, checking logs..."
+              docker compose -f docker-compose.prod.yml logs --tail=30 ledger-app
+              exit 1
+            fi
+
+            echo ">>> Pruning old images..."
+            docker image prune -f --filter "until=168h"
+
+            echo ">>> Deploy complete: $(date)"
