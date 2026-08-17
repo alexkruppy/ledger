@@ -57,10 +57,8 @@ public abstract class AbstractIntegrationTest {
     static final GenericContainer<?> REDIS = new GenericContainer<>("redis:7-alpine").withExposedPorts(6379);
 
     @Container
-    static final KafkaContainer KAFKA = new KafkaContainer(
-            DockerImageName.parse("apache/kafka:3.7.2")
-                    .asCompatibleSubstituteFor("confluentinc/cp-kafka"))
-            .withStartupTimeout(Duration.ofSeconds(180));
+    static final KafkaContainer KAFKA = new KafkaContainer("confluentinc/cp-kafka:7.6.0")
+            .withStartupTimeout(Duration.ofSeconds(240));
 
     protected static WireMockServer gateway;
 
