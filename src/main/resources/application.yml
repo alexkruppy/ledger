@@ -1,0 +1,114 @@
+server:
+  port: 8080
+  shutdown: graceful
+
+spring:
+  application:
+    name: ledger
+  threads:
+    virtual:
+      enabled: true
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/ledger}
+    username: ${DB_USERNAME:ledger}
+    password: ${DB_PASSWORD:ledger}
+    hikari:
+      maximum-pool-size: ${DB_POOL_SIZE:20}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        jdbc.time_zone: UTC
+        jdbc.batch_size: 50
+        order_inserts: true
+        order_updates: true
+  liquibase:
+    enabled: true
+    change-log: classpath:db/changelog/db.changelog-master.yaml
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      timeout: 2s
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+      acks: all
+      retries: 2147483647
+      enable-idempotence: true
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      properties:
+        delivery.timeout.ms: 120000
+        linger.ms: 5
+    consumer:
+      group-id: ledger-notifications
+      auto-offset-reset: earliest
+      enable-auto-commit: false
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: "*"
+        spring.json.value.default.type: com.ledger.messaging.OutboxMessage
+        max.poll.interval.ms: 300000
+    listener:
+      ack-mode: manual
+      concurrency: 3
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus,metrics
+  endpoint:
+    health:
+      probes:
+        enabled: true
+  metrics:
+    tags:
+      application: ${spring.application.name}
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+    tags-sorter: alpha
+    operations-sorter: alpha
+  api-docs:
+    path: /v3/api-docs
+
+ledger:
+  security:
+    jwt-secret: ${JWT_SECRET:change-me-to-a-very-long-secret-key-for-hs512-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa}
+    access-token-ttl: PT15M
+    refresh-token-ttl: P30D
+    refresh-token-store: ${REFRESH_TOKEN_STORE:redis} # redis | inmemory (fallback when no Redis)
+  idempotency:
+    ttl: PT24H
+  transfer:
+    fee-percent: ${TRANSFER_FEE_PERCENT:0.00}
+    min-amount: 0.01
+    max-amount: 1000000
+  rate-limit:
+    login-per-minute: ${LOGIN_RATE_LIMIT:10}
+    transfer-per-minute: ${TRANSFER_RATE_LIMIT:30}
+  outbox:
+    poll-interval-ms: ${OUTBOX_POLL_INTERVAL_MS:1000}
+    batch-size: ${OUTBOX_BATCH_SIZE:100}
+    max-attempts: ${OUTBOX_MAX_ATTEMPTS:10}
+  gateway:
+    base-url: ${GATEWAY_BASE_URL:http://localhost:8081}
+    connect-timeout-ms: 2000
+    read-timeout-ms: 15000
+    settle-async: ${GATEWAY_ASYNC:false}
+  fx:
+    pivot-currency: EUR
+  app:
+    fee-wallet-owner-email: fees@ledger.internal
+    seed-admin-email: admin@ledger.com
+    seed-admin-password: admin123

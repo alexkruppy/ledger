@@ -1,0 +1,257 @@
+@startuml ClassDiagram
+!theme plain
+title UML Class Diagram - Ledger (Spring Boot)
+
+skinparam classAttributeIconSize 0
+hide circle
+
+enum Role {
+  USER
+  ADMIN
+  SYSTEM
+}
+enum UserStatus {
+  ACTIVE
+  LOCKED
+}
+enum WalletStatus {
+  ACTIVE
+  FROZEN
+  CLOSED
+}
+enum EntryType {
+  DEBIT
+  CREDIT
+}
+enum TransferStatus {
+  PENDING
+  COMPLETED
+  ROLLED_BACK
+  FAILED
+}
+enum PaymentType {
+  TOP_UP
+  WITHDRAW
+}
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  ROLLED_BACK
+}
+enum OutboxStatus {
+  PENDING
+  PUBLISHED
+  FAILED
+}
+
+package "controller" <<Rectangle>> {
+    class AuthController {
+        - authService: AuthService
+        + register(RegisterRequest): ResponseEntity<AuthResponse>
+        + login(LoginRequest): ResponseEntity<AuthResponse>
+        + refresh(RefreshRequest): ResponseEntity<AuthResponse>
+        + logout(RefreshRequest): ResponseEntity<Void>
+        + me(User): ResponseEntity<UserDto>
+    }
+    class WalletController {
+        - walletService: WalletService
+        + create(User, CreateWalletRequest): ResponseEntity<WalletDto>
+        + list(User): ResponseEntity<List<WalletDto>>
+        + ledger(User, Long, int, int): ResponseEntity<PageResponse<LedgerEntryDto>>
+    }
+    class TransferController {
+        - transferService: TransferService
+        - idempotencyService: IdempotencyService
+        + transfer(User, TransferRequest, String): ResponseEntity<?>
+        + list(User): ResponseEntity<List<TransferDto>>
+    }
+    class PaymentController {
+        - sagaService: PaymentSagaService
+        - idempotencyService: IdempotencyService
+        + topUp(User, Long, TopUpRequest, String): ResponseEntity<?>
+        + withdraw(User, Long, WithdrawRequest, String): ResponseEntity<?>
+    }
+    class ExchangeRateController {
+        - exchangeRateService: ExchangeRateService
+        + list(String): ResponseEntity<List<ExchangeRateDto>>
+    }
+    class AdminController {
+        - exchangeRateService: ExchangeRateService
+        - transferService: TransferService
+        + upsertRate(ExchangeRateUpdateRequest): ResponseEntity<ExchangeRateDto>
+        + allTransfers(): ResponseEntity<List<TransferDto>>
+    }
+}
+
+package "service" <<Rectangle>> {
+    class AuthService {
+        + register(RegisterRequest): AuthResponse
+        + login(LoginRequest): AuthResponse
+        + refresh(String): AuthResponse
+    }
+    class TransferService {
+        + transfer(User, TransferRequest): TransferDto
+    }
+    class PaymentSagaService {
+        + topUp(User, Long, TopUpRequest, String): PaymentDto
+        + withdraw(User, Long, WithdrawRequest, String): PaymentDto
+        + settle(Long, GatewayResponse): PaymentDto
+        + compensate(Long, Throwable): PaymentDto
+    }
+    class LedgerService {
+        + currentBalance(Wallet): BigDecimal
+        + post(Wallet, EntryType, BigDecimal, String, String): BigDecimal
+    }
+    class FxService {
+        + rate(String, String): BigDecimal
+        + convert(BigDecimal, String, String): BigDecimal
+        + supportedCurrencies(): List<String>
+    }
+    class WalletService {
+        + create(Long, CreateWalletRequest): WalletDto
+        + list(Long): List<WalletDto>
+    }
+    class IdempotencyService {
+        + execute(Long, String, Supplier&lt;ResponseEntity&lt;?&gt;&gt;): ResponseEntity&lt;?&gt;
+    }
+    class OutboxService {
+        + emit(String, String, String, Map): void
+    }
+    class ExchangeRateService {
+        + list(String): List<ExchangeRateDto>
+        + upsert(ExchangeRateUpdateRequest): ExchangeRateDto
+    }
+}
+
+package "messaging" <<Rectangle>> {
+    class OutboxPoller {
+        + publishPending(): void
+    }
+    class KafkaEventPublisher {
+        + publish(OutboxEvent): void
+    }
+    class NotificationConsumer {
+        + onEvent(OutboxMessage, Acknowledgment): void
+        + onRetry(OutboxMessage, Acknowledgment): void
+        + onDlt(OutboxMessage, Acknowledgment): void
+    }
+}
+
+package "security" <<Rectangle>> {
+    class JwtService {
+        + generateAccessToken(User): String
+        + parse(String): Claims
+    }
+    class RefreshTokenService {
+        + issue(Long): String
+        + rotate(String): String
+        + validate(String): RefreshTokenRecord
+    }
+    class JwtAuthenticationFilter
+    class RateLimitService {
+        + check(String, int, Duration): void
+    }
+    class SecurityConfig
+}
+
+package "gateway" <<Rectangle>> {
+    class MockGatewayClient {
+        + charge(String, String, BigDecimal): GatewayResponse
+        + payout(String, String, BigDecimal): GatewayResponse
+    }
+}
+
+package "model" <<Rectangle>> {
+    class User {
+        - id: Long
+        - email: String
+        - role: Role
+        - status: UserStatus
+    }
+    class Wallet {
+        - id: Long
+        - currency: String
+        - balance: BigDecimal
+        - version: long
+    }
+    class Transfer {
+        - id: Long
+        - idempotencyKey: String
+        - amount: BigDecimal
+        - fee: BigDecimal
+        - status: TransferStatus
+    }
+    class PaymentTransaction {
+        - id: Long
+        - type: PaymentType
+        - amount: BigDecimal
+        - status: PaymentStatus
+    }
+    class LedgerEntry {
+        - id: Long
+        - entryType: EntryType
+        - amount: BigDecimal
+        - balanceAfter: BigDecimal
+        - operationKey: String
+    }
+    class ExchangeRate {
+        - rate: BigDecimal
+    }
+    class OutboxEvent {
+        - status: OutboxStatus
+        - attempts: int
+    }
+}
+
+package "dto" <<Rectangle>> {
+    class AuthResponse <<record>>
+    class RegisterRequest <<record>>
+    class LoginRequest <<record>>
+    class UserDto <<record>>
+    class WalletDto <<record>>
+    class TransferRequest <<record>>
+    class TransferDto <<record>>
+    class PaymentDto <<record>>
+    class LedgerEntryDto <<record>>
+    class ErrorResponse <<record>>
+    class PageResponse <<record>>
+}
+
+package "exception" <<Rectangle>> {
+    class GlobalExceptionHandler
+    class ApiException
+    class ResourceNotFoundException
+    class ConflictException
+    class BadRequestException
+    class InsufficientFundsException
+}
+
+' ---------- Wiring ----------
+AuthController --> AuthService
+WalletController --> WalletService
+TransferController --> TransferService
+TransferController --> IdempotencyService
+PaymentController --> PaymentSagaService
+PaymentController --> IdempotencyService
+AdminController --> ExchangeRateService
+
+TransferService --> LedgerService
+TransferService --> FxService
+TransferService --> OutboxService
+PaymentSagaService --> LedgerService
+PaymentSagaService --> MockGatewayClient
+PaymentSagaService --> OutboxService
+WalletService --> LedgerService
+AuthService --> JwtService
+AuthService --> RefreshTokenService
+
+OutboxPoller --> KafkaEventPublisher
+SecurityConfig --> JwtAuthenticationFilter
+JwtAuthenticationFilter --> JwtService
+
+User ||--o{ Wallet
+Wallet ||--o{ Transfer
+Wallet ||--o{ LedgerEntry
+
+@enduml

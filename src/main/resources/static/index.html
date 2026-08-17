@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ledger — Distributed Ledger &amp; Payment Gateway</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<header class="topbar">
+    <div class="brand">Ledger <span class="sub">Payment Gateway</span></div>
+    <nav id="nav" class="hidden">
+        <a href="#" data-view="dashboard">Dashboard</a>
+        <a href="#" data-view="wallets">Wallets</a>
+        <a href="#" data-view="transfers">Transfers</a>
+        <a href="#" data-view="rates">Rates</a>
+        <button id="logout-btn" class="btn-link">Logout</button>
+    </nav>
+</header>
+
+<main class="container">
+    <!-- Auth views -->
+    <section id="view-auth" class="view">
+        <div class="card auth-card">
+            <h2>Welcome</h2>
+            <ul class="tabs">
+                <li class="tab active" data-tab="login">Login</li>
+                <li class="tab" data-tab="register">Register</li>
+            </ul>
+            <form id="login-form" class="form">
+                <input type="email" id="login-email" placeholder="Email" required>
+                <input type="password" id="login-password" placeholder="Password" required>
+                <button type="submit" class="btn primary">Sign in</button>
+            </form>
+            <form id="register-form" class="form hidden">
+                <input type="email" id="register-email" placeholder="Email" required>
+                <input type="password" id="register-password" placeholder="Password (min 8 chars)" required>
+                <input type="text" id="register-first" placeholder="First name">
+                <input type="text" id="register-last" placeholder="Last name">
+                <button type="submit" class="btn primary">Create account</button>
+            </form>
+            <div id="auth-error" class="error hidden"></div>
+        </div>
+    </section>
+
+    <!-- Dashboard -->
+    <section id="view-dashboard" class="view hidden">
+        <h2>Dashboard</h2>
+        <div class="grid-2">
+            <div class="card">
+                <h3>My wallets</h3>
+                <div id="dashboard-wallets">Loading…</div>
+            </div>
+            <div class="card">
+                <h3>Recent activity</h3>
+                <div id="dashboard-activity">Loading…</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Wallets -->
+    <section id="view-wallets" class="view hidden">
+        <h2>Wallets</h2>
+        <div class="card">
+            <h3>Create wallet</h3>
+            <form id="create-wallet-form" class="form inline">
+                <select id="wallet-currency">
+                    <option value="EUR">EUR</option>
+                    <option value="USD">USD</option>
+                    <option value="GBP">GBP</option>
+                    <option value="CHF">CHF</option>
+                    <option value="JPY">JPY</option>
+                    <option value="RUB">RUB</option>
+                </select>
+                <button type="submit" class="btn primary">Create</button>
+            </form>
+        </div>
+        <div class="card">
+            <h3>My wallets</h3>
+            <table class="table">
+                <thead><tr><th>ID</th><th>Currency</th><th>Balance</th><th>Status</th><th>Actions</th></tr></thead>
+                <tbody id="wallets-table"></tbody>
+            </table>
+        </div>
+    </section>
+
+    <!-- Transfers -->
+    <section id="view-transfers" class="view hidden">
+        <h2>Transfers</h2>
+        <div class="grid-2">
+            <div class="card">
+                <h3>Send money</h3>
+                <form id="transfer-form" class="form">
+                    <label>From wallet</label>
+                    <select id="transfer-from" required></select>
+                    <label>To wallet ID</label>
+                    <input type="number" id="transfer-to" min="1" required>
+                    <label>Amount</label>
+                    <input type="number" id="transfer-amount" step="0.01" min="0.01" required>
+                    <button type="submit" class="btn primary">Send</button>
+                </form>
+                <p class="hint">Idempotency-Key is generated automatically per request — safe to retry.</p>
+            </div>
+            <div class="card">
+                <h3>Top up / Withdraw (external gateway)</h3>
+                <form id="topup-form" class="form">
+                    <label>Wallet</label>
+                    <select id="topup-wallet" required></select>
+                    <label>Amount</label>
+                    <input type="number" id="topup-amount" step="0.01" min="0.01" required>
+                    <button type="submit" class="btn success">Top up</button>
+                </form>
+                <form id="withdraw-form" class="form">
+                    <label>Wallet</label>
+                    <select id="withdraw-wallet" required></select>
+                    <label>Amount</label>
+                    <input type="number" id="withdraw-amount" step="0.01" min="0.01" required>
+                    <button type="submit" class="btn danger">Withdraw</button>
+                </form>
+                <p class="hint">Amounts divisible by 100 are declined by the mock gateway → saga compensation (ROLLED_BACK).</p>
+            </div>
+        </div>
+        <div class="card">
+            <h3>Transfer history</h3>
+            <table class="table">
+                <thead><tr><th>ID</th><th>From</th><th>To</th><th>Amount</th><th>Converted</th><th>Fee</th><th>Status</th><th>Date</th></tr></thead>
+                <tbody id="transfers-table"></tbody>
+            </table>
+        </div>
+        <div class="card">
+            <h3>Payment history (gateway)</h3>
+            <table class="table">
+                <thead><tr><th>ID</th><th>Type</th><th>Wallet</th><th>Amount</th><th>Status</th><th>External ID</th><th>Failure</th><th>Date</th></tr></thead>
+                <tbody id="payments-table"></tbody>
+            </table>
+        </div>
+    </section>
+
+    <!-- Rates -->
+    <section id="view-rates" class="view hidden">
+        <h2>Exchange rates (EUR pivot)</h2>
+        <div class="card">
+            <table class="table">
+                <thead><tr><th>Currency</th><th>1 EUR =</th></tr></thead>
+                <tbody id="rates-table"></tbody>
+            </table>
+        </div>
+    </section>
+</main>
+
+<script src="/js/app.js"></script>
+</body>
+</html>
