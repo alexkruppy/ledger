@@ -3,9 +3,7 @@ package com.ledger.support;
 import com.github.tomakehurst.wiremock.WireMockServer;
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
 import com.ledger.model.LedgerEntry;
-import com.ledger.model.OutboxEvent;
-import com.ledger.model.PaymentTransaction;
-import com.ledger.model.Transfer;
+import com.ledger.model.User;
 import com.ledger.model.Wallet;
 import com.ledger.repository.LedgerEntryRepository;
 import com.ledger.repository.OutboxRepository;
@@ -13,7 +11,7 @@ import com.ledger.repository.PaymentTransactionRepository;
 import com.ledger.repository.TransferRepository;
 import com.ledger.repository.WalletRepository;
 import com.ledger.repository.UserRepository;
-import com.ledger.model.User;
+import com.ledger.service.FxService;
 import com.ledger.service.LedgerService;
 import org.junit.jupiter.api.AfterEach;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -36,13 +34,6 @@ import java.util.function.BooleanSupplier;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.*;
 
-/**
- * Base class for integration tests: real PostgreSQL and Redis via
- * Testcontainers, plus a WireMock stub acting as the external acquiring gateway.
- * Kafka auto-config stays enabled but points at an unreachable broker so the
- * Spring context boots cleanly; subclasses that need a real broker
- * (e.g. {@link AbstractKafkaIntegrationTest}) override the bootstrap servers.
- */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @Testcontainers
 @TestPropertySource(properties = {
@@ -84,6 +75,8 @@ public abstract class AbstractIntegrationTest {
     protected PasswordEncoder passwordEncoder;
     @Autowired
     protected TransactionTemplate tx;
+    @Autowired
+    protected FxService fxService;
 
     static {
         gateway = new WireMockServer(WireMockConfiguration.options().dynamicPort());
@@ -133,8 +126,32 @@ public abstract class AbstractIntegrationTest {
             transferRepository.deleteAll();
             paymentRepository.deleteAll();
             outboxRepository.deleteAll();
-            walletRepository.deleteTestWallets();
-            userRepository.deleteTestUsers();
+            walletRepository.deleteAll();
+            userRepository.deleteAll();
+        });
+        seedSystemData();
+    }
+
+    private void seedSystemData() {
+        tx.executeWithoutResult(s -> {
+            String feeEmail = "fees@ledger.internal";
+            if (!userRepository.existsByEmailIgnoreCase(feeEmail)) {
+                User fees = new User();
+                fees.setEmail(feeEmail);
+                fees.setPasswordHash("!disabled!");
+                fees.setFirstName("Ledger");
+                fees.setLastName("Fees");
+                fees.setRole(User.Role.SYSTEM);
+                fees = userRepository.save(fees);
+                for (String currency : fxService.supportedCurrencies()) {
+                    if (!walletRepository.existsByUserIdAndCurrency(fees.getId(), currency)) {
+                        Wallet w = new Wallet();
+                        w.setUser(fees);
+                        w.setCurrency(currency);
+                        walletRepository.save(w);
+                    }
+                }
+            }
         });
     }
 
