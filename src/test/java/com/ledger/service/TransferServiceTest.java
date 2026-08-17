@@ -105,6 +105,7 @@ class TransferServiceTest {
     void frozenWalletThrows() {
         fromWallet.setStatus(Wallet.Status.FROZEN);
         when(walletRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(fromWallet));
+        when(walletRepository.findByIdForUpdate(2L)).thenReturn(Optional.of(toWallet));
         var req = new com.ledger.dto.TransferRequest(1L, 2L, new BigDecimal("10.00"));
         assertThatThrownBy(() -> transferService.transfer(user, req))
                 .isInstanceOf(BadRequestException.class);

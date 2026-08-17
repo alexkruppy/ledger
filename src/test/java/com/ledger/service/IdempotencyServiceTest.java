@@ -34,7 +34,6 @@ class IdempotencyServiceTest {
                 new LedgerProperties.Idempotency(Duration.ofMinutes(10)),
                 null, null, null, null, null, null);
         idempotencyService = new IdempotencyService(redisTemplate, new ObjectMapper(), props);
-        when(redisTemplate.opsForValue()).thenReturn(valueOperations);
     }
 
     @Test
@@ -46,6 +45,7 @@ class IdempotencyServiceTest {
 
     @Test
     void firstCallClaimsKeyAndExecutes() {
+        when(redisTemplate.opsForValue()).thenReturn(valueOperations);
         when(valueOperations.setIfAbsent(anyString(), anyString(), any(Duration.class)))
                 .thenReturn(true);
 
@@ -58,6 +58,7 @@ class IdempotencyServiceTest {
 
     @Test
     void secondCallReturnsCached() {
+        when(redisTemplate.opsForValue()).thenReturn(valueOperations);
         String cachedJson = "{\"status\":200,\"body\":\"\\\"cached\\\"\"}";
         when(valueOperations.get("idem:1:key-2")).thenReturn(cachedJson);
 
@@ -70,6 +71,7 @@ class IdempotencyServiceTest {
 
     @Test
     void pendingKeyThrowsConflict() {
+        when(redisTemplate.opsForValue()).thenReturn(valueOperations);
         when(valueOperations.setIfAbsent(anyString(), anyString(), any(Duration.class)))
                 .thenReturn(false);
         when(valueOperations.get("idem:1:key-3")).thenReturn("pending");
@@ -81,6 +83,7 @@ class IdempotencyServiceTest {
 
     @Test
     void failedExecutionDeletesKey() {
+        when(redisTemplate.opsForValue()).thenReturn(valueOperations);
         when(valueOperations.setIfAbsent(anyString(), anyString(), any(Duration.class)))
                 .thenReturn(true);
 

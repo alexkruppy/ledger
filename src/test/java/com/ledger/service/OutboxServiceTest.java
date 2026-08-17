@@ -3,6 +3,7 @@ package com.ledger.service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ledger.model.OutboxEvent;
 import com.ledger.repository.OutboxRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -21,7 +22,12 @@ class OutboxServiceTest {
 
     @Mock private OutboxRepository outboxRepository;
 
-    private final OutboxService outboxService = new OutboxService(outboxRepository, new ObjectMapper());
+    private OutboxService outboxService;
+
+    @BeforeEach
+    void setUp() {
+        outboxService = new OutboxService(outboxRepository, new ObjectMapper());
+    }
 
     @Test
     void emitSavesEventWithSerializedPayload() {
