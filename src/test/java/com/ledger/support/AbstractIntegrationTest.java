@@ -37,7 +37,7 @@ import static com.github.tomakehurst.wiremock.client.WireMock.*;
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @Testcontainers
 @TestPropertySource(properties = {
-        "ledger.outbox.poll-interval-ms=300",
+        "ledger.outbox.poll-interval-ms=999999999",
         "ledger.gateway.settle-async=false",
         "ledger.security.refresh-token-store=inmemory",
         "logging.level.com.ledger.messaging=WARN",

@@ -2,6 +2,7 @@ package com.ledger.support;
 
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.test.context.TestPropertySource;
 import org.testcontainers.containers.KafkaContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.utility.DockerImageName;
@@ -13,6 +14,9 @@ import java.time.Duration;
  * broker via Testcontainers. Only tests that publish / consume Kafka messages
  * (e.g. {@code OutboxIntegrationTest}) should extend this class.
  */
+@TestPropertySource(properties = {
+        "ledger.outbox.poll-interval-ms=300",
+})
 public abstract class AbstractKafkaIntegrationTest extends AbstractIntegrationTest {
 
     @Container
