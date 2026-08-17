@@ -21,7 +21,7 @@ public abstract class AbstractKafkaIntegrationTest extends AbstractIntegrationTe
 
     @Container
     static final KafkaContainer KAFKA = new KafkaContainer(
-            DockerImageName.parse("confluentinc/cp-kafka:7.6.1"))
+            DockerImageName.parse("apache/kafka:3.7.2"))
             .withStartupTimeout(Duration.ofSeconds(180));
 
     protected static String kafkaBootstrap() {
