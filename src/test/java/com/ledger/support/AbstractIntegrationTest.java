@@ -159,21 +159,21 @@ public abstract class AbstractIntegrationTest {
     private void seedSystemData() {
         tx.executeWithoutResult(s -> {
             String feeEmail = "fees@ledger.internal";
-            if (!userRepository.existsByEmailIgnoreCase(feeEmail)) {
-                User fees = new User();
-                fees.setEmail(feeEmail);
-                fees.setPasswordHash("!disabled!");
-                fees.setFirstName("Ledger");
-                fees.setLastName("Fees");
-                fees.setRole(User.Role.SYSTEM);
-                fees = userRepository.save(fees);
-                for (String currency : fxService.supportedCurrencies()) {
-                    if (!walletRepository.existsByUserIdAndCurrency(fees.getId(), currency)) {
-                        Wallet w = new Wallet();
-                        w.setUser(fees);
-                        w.setCurrency(currency);
-                        walletRepository.save(w);
-                    }
+            User fees = userRepository.findByEmailIgnoreCase(feeEmail).orElseGet(() -> {
+                User u = new User();
+                u.setEmail(feeEmail);
+                u.setPasswordHash("!disabled!");
+                u.setFirstName("Ledger");
+                u.setLastName("Fees");
+                u.setRole(User.Role.SYSTEM);
+                return userRepository.save(u);
+            });
+            for (String currency : fxService.supportedCurrencies()) {
+                if (!walletRepository.existsByUserIdAndCurrency(fees.getId(), currency)) {
+                    Wallet w = new Wallet();
+                    w.setUser(fees);
+                    w.setCurrency(currency);
+                    walletRepository.save(w);
                 }
             }
         });
